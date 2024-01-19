@@ -1,0 +1,218 @@
+---
+title: "Sentiment Analysis Project"
+author: "Angelina Nair & Miriam Ahmad"
+date: "2024-01-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## import libraries 
+```{r}
+library(rio)
+library(readxl)
+library(openxlsx)
+library(tm)
+library(wordcloud)
+library(colorRamps)
+library(SnowballC)
+library(RColorBrewer)
+library(tidyverse)
+library(qdap)
+library(rvest)
+library(xml2)
+```
+
+## data from urls (male)
+```{r}
+# male review of barbie
+urlM <- 'https://www.theguardian.com/commentisfree/2023/aug/01/barbie-film-ken-ryan-gosling-patriarchy'
+
+#creating html nodes 
+reviews <- read_html(urlM)
+
+parHTMLm <- html_nodes(reviews, "p")
+
+parM <- html_text(parHTMLm)
+```
+
+## data from urls (female)
+```{r}
+# female review of barbie
+urlF <- 'https://www.rogerebert.com/reviews/barbie-movie-review-2023'
+
+#creating html nodes 
+reviews <- read_html(urlF)
+
+parHTMLf <- html_nodes(reviews, "p")
+
+parF <- html_text(parHTMLf)
+```
+
+## Introduction 
+We chose to analyze two different reviews of the Barbie movie. One was written by a woman and the other, by a man. We chose to analyze these two reviews because we hypothesizes that the two reviewers would have different opinions of the movie. We plan on doing a polarity test of the words in both of the reviews and making a word cloud of the most commonly found words in each of the reviews. This can be used to see the difference in tone. We predicted that they would both have positive polarity but the most commonly used words would be different. 
+
+## Data and Data Preparation
+We got the text from a website, so we used `rvest` to scrape the data from two different websites. Both of the reviews individually contained around 1,000 words. The data we are analyzing is simply a review on the same movie by different people. In order to prepare for the analysis, we scraped the words from the website and and saved that as our data. In addition, we also cleared any unnecessary punctuation, numbers, white space, and turned everything into lowercase. 
+
+## made a wordcloud (male)
+```{r}
+corpM <- Corpus(VectorSource(parM))
+
+
+corpM <- tm_map(corpM, content_transformer(tolower))
+corpM <- tm_map(corpM, removeNumbers)
+corpM <- tm_map(corpM, removePunctuation)
+corpM <- tm_map(corpM, stripWhitespace)
+corpM <- tm_map(corpM, removeWords, stopwords("english"))
+
+parTDM <- TermDocumentMatrix(corpM)
+parAM <- as.matrix(parTDM)
+
+termG <- sort(rowSums(parAM), decreasing = TRUE)
+termG2 <- data.frame(word = names(termG), freq=termG)
+
+cols <- rainbow(length(termG2$word))
+wordcloud(termG2$word, termG2$freq, scale = c(2, 0.5), 
+          min.freq = 2, rot.per = 0.5, 
+          colors = cols, 
+          random.color = FALSE, 
+          ordered.colors = FALSE, 
+          random.order = FALSE)
+```
+
+## made a wordcloud (female)
+```{r}
+corpF <- Corpus(VectorSource(parF))
+
+
+corpF <- tm_map(corpF, content_transformer(tolower))
+corpF <- tm_map(corpF, removeNumbers)
+corpF <- tm_map(corpF, removePunctuation)
+corpF <- tm_map(corpF, stripWhitespace)
+corpF <- tm_map(corpF, removeWords, stopwords("english"))
+
+parTDM <- TermDocumentMatrix(corpF)
+parAM <- as.matrix(parTDM)
+
+termG <- sort(rowSums(parAM), decreasing = TRUE)
+termG2 <- data.frame(word = names(termG), freq=termG)
+
+cols <- rainbow(length(termG2$word))
+wordcloud(termG2$word, termG2$freq, scale = c(2, 0.5), 
+          min.freq = 2, rot.per = 0.5, 
+          colors = cols, 
+          random.color = FALSE, 
+          ordered.colors = FALSE, 
+          random.order = FALSE)
+```
+
+## TF-IDF Analysis
+As we predicted, the most commonly used words for both of the texts are different. The most commonly used word for the review written by a man is "men". On the other hand, the most commonly used word in the review written by a woman is "barbie". This is significant because the man's review was solely about the movie from a man's perspective whereas the woman's review was about the movie itself, irrespective of a perspective based on gender. 
+Although at first glance, this may seem because of gender, we hypothesize that this is not entirely the case. This is because when we look at the background of the man, he is a political strategist, whereas the woman is an actual movie critic. This explains the difference in perspective. The man is writing about the movie from a societal perspective whereas the woman is writing about the movie its self and literally critiques about technicalities, etc. 
+
+## sentiment analysis for MALE
+```{r}
+# assigning polarity to each word in parA
+p2 <- polarity(parM, group=NULL, 
+                polarity.frame = key.pol, 
+                negators = negation.words,
+                amplifiers = amplification.words, 
+                deamplifiers = deamplification.words, 
+                n.before = 2, n.after = 2)
+
+p0 <- polarity(parM,group=NULL,
+               polarity.frame = key.pol,
+               n.before = 0, n.after = 0)
+
+# summary of the polarity 
+head(p2)
+head(p0)
+
+# changing NaN values to 0
+p2$all$polarity[is.nan(p2$all$polarity)] <- 0
+p0$all$polarity[is.nan(p0$all$polarity)] <- 0
+
+
+plot(p2$all$polarity, p0$all$polarity, 
+     xlab = "0 additional words considered", 
+     ylab = "4 (2 before and after) additional words considered", 
+     main = "MALE Sentiment Analysis")
+
+
+abline(a=0, b=1, col= "blue4", lty=2)
+
+```
+
+
+## sentiment analysis for FEMALE
+```{r}
+# assigning polarity to each word in parA
+p2F <- polarity(parF, group=NULL, 
+                polarity.frame = key.pol, 
+                negators = negation.words,
+                amplifiers = amplification.words, 
+                deamplifiers = deamplification.words, 
+                n.before = 2, n.after = 2)
+
+p0F <- polarity(parF,group=NULL,
+               polarity.frame = key.pol,
+               n.before = 0, n.after = 0)
+
+# summary of the polarity 
+head(p2F)
+head(p0F)
+
+# changing NaN values to 0
+p2F$all$polarity[is.nan(p2F$all$polarity)] <- 0
+p0F$all$polarity[is.nan(p0F$all$polarity)] <- 0
+
+
+plot(p2F$all$polarity, p0F$all$polarity, 
+     xlab = "0 additional words considered", 
+     ylab = "4 (2 before and after) additional words considered", 
+     main = "FEMALE Sentiment Analysis")
+
+
+abline(a=0, b=1, col= "violetred", lty=2)
+```
+
+## Sentiment Analysis 
+We predicted that the man's review would have an overall negative polarity whereas the woman's review would have a positive polarity. Looking at the `p2`, or the one with two words in front and two words after, the male perspective of the review had a much more negative review with the most minimum average polarity being `-1.565867` where the female perspective was `-1`. The maximum polarity for the male review was `0.5144958` and the female review was `0.7071068`.
+However, when we look at the individual words themselves, the female polarity is much more extreme. The female review's maximum and minimum polarities were, respectively, `0.7715167` and `-1`. On the other hand, the male review's maximum and minimum polarities were, respectively, `0.5144958` and `-0.7504788`.
+
+## min and max polarities MALE
+```{r}
+## MALE
+min(p2$all$polarity)
+max(p2$all$polarity)
+
+min(p0$all$polarity)
+max(p0$all$polarity)
+```
+
+## min and max polarities FEMALE
+```{r}
+## FEMALE
+min(p2F$all$polarity)
+max(p2F$all$polarity)
+
+min(p0F$all$polarity)
+max(p0F$all$polarity)
+```
+
+
+## Results 
+Our hypothesis of the most common words on the two reviews would be different. We were correct that it was different but we were surprised that the most common word for the male review was "men." In addition, some of the other common words found in the male review was "patriarchy", "self-hate", and "manchild". The female review contained words such as "Gerwig" (the movie's director), "oscar", and "critic". These words display a review of the movie from the point of view of a movie critic. The words found in the male review, however, showcases the review written from a societal perspective. 
+In addition, we were also surprised that the polarity of the individual words for male review was less extreme. We were expecting the male review to have a lower average polarity. However, looking at the two words before and after, this hypothesis was correct.
+If we were to conduct the study again in the future, we would chose reviewers with similar backgrounds. This is because the male reviewer being a political strategist while the female reviewer was a movie critic makes the context of the review entirely different. It would make more sense in the future if both reviewers came from similar backgrounds. 
+
+## Conclusion 
+We found that the common words for both reviews were different; with the most common word for the male review being "men", and "Barbie" for the female review. Although our hypothesis was correct, we find the words to be surprising. In addition, the polarity for the individual words was different that what we had predicted. Overall, we believe that these findings can be explained by looking at the background of the reviewer. If we were to do this study again in the future, we believe reviewers coming from similar backgrounds would give us a more cohesive data.  
+
+## Citions 
+Lemire, C. (n.d.). Barbie Movie Review & Film Summary (2023): Roger Ebert. movie review & film summary (2023) | Roger Ebert. https://www.rogerebert.com/reviews/barbie-movie-review-2023
+
+Olla, A. (2023, August 1). I wept for Ken: Why men have the most to gain from watching Barbie | akin olla. The Guardian. https://www.theguardian.com/commentisfree/2023/aug/01/barbie-film-ken-ryan-gosling-patriarchy 
